@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียนสมาชิก</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; background-color: #f9f9f9; }
+        h2 { text-align: center; color: #333; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input { width: 100%; padding: 12px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 12px; margin-top: 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #218838; }
+        .readonly { background-color: #e9ecef; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h2>ลงทะเบียนสมาชิกใหม่</h2>
+    <form id="regForm">
+        <label>เลขบัตรประชาชน:</label>
+        <input type="text" id="citizen_id" class="readonly" readonly>
+        
+        <label>ชื่อ:</label>
+        <input type="text" id="firstname" class="readonly" readonly>
+        
+        <label>นามสกุล:</label>
+        <input type="text" id="lastname" class="readonly" readonly>
+        
+        <label>เบอร์โทรศัพท์ (โปรดระบุ):</label>
+        <input type="tel" id="mobile" placeholder="08x-xxx-xxxx" required>
+        
+        <button type="submit">ยืนยันการลงทะเบียน</button>
+    </form>
+
+    <script>
+        // 1. ดึงข้อมูลที่เก็บไว้ใน Session (จากหน้า index.html) มาแสดง
+        window.onload = function() {
+            const dgaUserStr = sessionStorage.getItem('dga_user');
+            if (dgaUserStr) {
+                const dgaUser = JSON.parse(dgaUserStr);
+                document.getElementById('citizen_id').value = dgaUser.citizen_id || '';
+                document.getElementById('firstname').value = dgaUser.firstname || '';
+                document.getElementById('lastname').value = dgaUser.lastname || '';
+            } else {
+                alert("ไม่พบข้อมูลผู้ใช้ กรุณา Login ใหม่");
+                // window.location.href = './'; // ถ้าอยากให้ดีดกลับหน้าแรก
+            }
+        };
+
+        // 2. เมื่อกดปุ่ม Submit
+        document.getElementById('regForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                citizen_id: document.getElementById('citizen_id').value,
+                firstname: document.getElementById('firstname').value,
+                lastname: document.getElementById('lastname').value,
+                mobile: document.getElementById('mobile').value
+            };
+
+            try {
+                // ใช้ ./ เพื่อให้รองรับทั้ง Local และ Server (/test1/...)
+                const response = await fetch('./api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert("🎉 ลงทะเบียนสำเร็จ!");
+                    // เคลียร์ข้อมูลชั่วคราวแล้วพาไปหน้า Dashboard หรือหน้าแรก
+                    sessionStorage.removeItem('dga_user');
+                    window.location.href = './index.html'; 
+                } else {
+                    alert("❌ เกิดข้อผิดพลาด: " + (data.message || JSON.stringify(data)));
+                }
+            } catch (error) {
+                alert("❌ เชื่อมต่อ Server ไม่ได้: " + error.message);
+            }
+        };
+    </script>
+</body>
+</html>

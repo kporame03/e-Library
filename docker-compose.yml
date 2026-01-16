@@ -1,0 +1,57 @@
+services:
+  # =========================
+  # App Service (C++)
+  # =========================
+  app:
+    build: .
+    container_name: cpp_dga_service
+    ports:
+      - "5071:8080"        # เข้าจากภายนอก 5071 -> ภายใน 8080
+    volumes:
+      - ./public:/app/public  # ✅ Map โฟลเดอร์หน้าเว็บเข้าไปด้วย
+    depends_on:
+      - db
+    env_file:
+      - .env
+    restart: always
+    networks:
+      - citizen_net
+
+  # =========================
+  # Database Service (PostgreSQL)
+  # =========================
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: citizen_db
+    ports:
+      - "5434:5432"        # ใช้ 5434 หลบ Port ที่อาจจะชน
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    networks:
+      - citizen_net
+
+  # =========================
+  # Adminer (Optional)
+  # =========================
+  adminer:
+    image: adminer
+    container_name: adminer_db
+    ports:
+      - "7018:8080"
+    depends_on:
+      - db
+    networks:
+      - citizen_net
+
+volumes:
+  pgdata:
+
+networks:
+  citizen_net:
+    driver: bridge

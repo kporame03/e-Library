@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DGA Login Redirect</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        .loading { font-size: 20px; color: #666; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>กำลังยืนยันตัวตนผ่านทางรัฐ...</h1>
+    <p id="message" class="loading">กรุณารอสักครู่...</p>
+
+    <script>
+        async function autoLogin() {
+            // 1. ดึงค่า mToken และ appId จาก URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const mToken = urlParams.get('mToken');
+            const appId = urlParams.get('appId');
+
+            if (!mToken || !appId) {
+                document.getElementById('message').innerText = "❌ ไม่พบ mToken หรือ appId";
+                document.getElementById('message').className = "error";
+                return;
+            }
+
+            try {
+                // 2. ส่งค่าไปให้ Server C++ ตรวจสอบ
+                // ใช้ ./ เพื่อให้รองรับทั้ง /test1/api... และ /api... โดยอัตโนมัติ
+                const response = await fetch('./api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mToken, appId })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    if (data.type === 'REGISTER_NEEDED') {
+                        // 3. กรณีต้องลงทะเบียนใหม่ -> ไปหน้า Register
+                        document.getElementById('message').innerText = "✅ ยืนยันตัวตนสำเร็จ! กำลังพาไปหน้าลงทะเบียน...";
+                        document.getElementById('message').className = "success";
+                        
+                        // ส่งข้อมูลที่ได้จาก DGA ไปหน้า Register ด้วย (ผ่าน Query String หรือ sessionStorage)
+                        sessionStorage.setItem('dga_user', JSON.stringify(data.prefill_data));
+                        setTimeout(() => window.location.href = './register', 1500);
+                    } else {
+                        // 4. กรณีมี User อยู่แล้ว -> Login สำเร็จ
+                        document.getElementById('message').innerText = `🎉 ยินดีต้อนรับคุณ ${data.user.firstname} ${data.user.lastname}`;
+                        document.getElementById('message').className = "success";
+                        console.log("User Data:", data.user);
+                    }
+                } else {
+                    throw new Error(data.message || 'Login Failed');
+                }
+            } catch (error) {
+                document.getElementById('message').innerText = "❌ เกิดข้อผิดพลาด: " + error.message;
+                document.getElementById('message').className = "error";
+            }
+        }
+
+        // รันทันทีเมื่อเปิดหน้านี้
+        autoLogin();
+    </script>
+</body>
+</html>
